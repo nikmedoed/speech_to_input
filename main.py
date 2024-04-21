@@ -4,7 +4,6 @@ import threading
 import time
 import keyboard
 import queue
-
 from app.ASRP_debug_demo import ASRProcessorDemo
 from app.ASRProcessor import ASRProcessor
 from app.models.FasterWhisper import FasterWhisperASR
@@ -21,7 +20,11 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
 
     def send_text(text):
         # print(text or "", end="")
-        keyboard_control.type(text)
+        # keyboard_control.type(text) # заменяет . и , на ю и б при русской раскладке
+        pyperclip.copy(text)
+        with keyboard_control.pressed(pynput.keyboard.Key.ctrl):
+            keyboard_control.press('v')
+            keyboard_control.release('v')
 
     def audio_callback(in_data, frame_count, time_info, status):
         audio_data = np.frombuffer(in_data, dtype=np.int16).astype(np.float32) / 32768
@@ -65,22 +68,27 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
                 else:
                     record_is_process.wait()
             else:
+                all_text = ""
                 data_list = []
                 while not queue_audio_buffer.empty():
                     data_list.append(queue_audio_buffer.get())
                 processor.insert_audio_chunk(data_list)
                 o = processor.process_iter()
                 if queue_audio_buffer.empty() and not record_is_process.is_set():
-                    pyperclip.copy(processor.gel_all_text().lstrip())
+                    all_text = processor.gel_all_text().lstrip()
                     o += processor.finish()
                     indicator.hide()
                 send_text(o)
+                if all_text:
+                    pyperclip.copy(all_text)
 
     except KeyboardInterrupt:
         pass
     finally:
         record_is_process.clear()
-        stream.close()
+        if stream is not None:
+            stream.stop_stream()
+            stream.close()
         p.terminate()
 
 
@@ -106,6 +114,6 @@ if __name__ == "__main__":
     try:
         indicator.root.mainloop()
     except KeyboardInterrupt:
-        pass
+        indicator.root.destroy()
     finally:
         processing_thread.join()
