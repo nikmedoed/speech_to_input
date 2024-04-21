@@ -17,7 +17,7 @@ class RecordingIndicator:
             self.root, width=self.root_size, height=self.root_size,
             bg='grey15', highlightthickness=0)
         self.canvas.pack()
-        self.canvas.create_oval(0, 0, self.size, self.size, fill='red', outline='')
+        self.circle = self.canvas.create_oval(0, 0, self.size, self.size, fill='red', outline='')
 
         self.label_asr = self.canvas.create_text(
             self.size / 2, self.size * 0.25, text="ASR", fill='white',
@@ -78,3 +78,6 @@ class RecordingIndicator:
         self.start_time = None
         self.canvas.itemconfig(self.timer_label, text="00:00")
         self.root.withdraw()
+
+    def stop_recordeing(self, color='blue'):
+        self.canvas.itemconfig(self.circle, fill=color)

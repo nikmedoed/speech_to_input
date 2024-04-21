@@ -12,6 +12,14 @@ import pynput
 import pyperclip
 
 
+def paste(keyboard_control):
+    ctrl = pynput.keyboard.Key.ctrl
+    keyboard_control.press(ctrl)
+    keyboard_control.press('v')
+    keyboard_control.release('v')
+    keyboard_control.release(ctrl)
+
+
 def main(processor: ASRProcessor, sample_rate, selected_device, indicator: RecordingIndicator):
     queue_audio_buffer = queue.Queue()
     record_is_process = threading.Event()
@@ -22,9 +30,7 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
         # print(text or "", end="")
         # keyboard_control.type(text) # заменяет . и , на ю и б при русской раскладке
         pyperclip.copy(text)
-        with keyboard_control.pressed(pynput.keyboard.Key.ctrl):
-            keyboard_control.press('v')
-            keyboard_control.release('v')
+        paste(keyboard_control)
 
     def audio_callback(in_data, frame_count, time_info, status):
         audio_data = np.frombuffer(in_data, dtype=np.int16).astype(np.float32) / 32768
@@ -56,9 +62,11 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
         else:
             record_is_process.clear()
             stream.stop_stream()
+            indicator.stop_recordeing()
             print(f"\n{moment} Recording stopped.")
 
     keyboard.add_hotkey('ctrl+alt+r', handle_recording)
+    keyboard.add_hotkey('ctrl+`', handle_recording)
 
     try:
         while True:
