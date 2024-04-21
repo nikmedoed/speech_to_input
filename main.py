@@ -62,7 +62,7 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
         else:
             record_is_process.clear()
             stream.stop_stream()
-            indicator.stop_recordeing()
+            indicator.stop_recording()
             print(f"\n{moment} Recording stopped.")
 
     keyboard.add_hotkey('ctrl+alt+r', handle_recording)
