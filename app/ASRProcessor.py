@@ -5,38 +5,45 @@ from app.models.types import Word
 
 
 class ASRProcessor:
+    audio_buffer = None
+    buffer_time_offset = 0
+    transcript_buffer: HypothesisBuffer = None
+    commited = []
+    buffer_trimming_sec = 30
 
     def __init__(self, asr, sampling_rate):
         self.asr = asr
+        self.sampling_rate = sampling_rate
+        self.reset()
+
+    def reset(self):
         self.audio_buffer = np.array([], dtype=np.float32)
         self.buffer_time_offset = 0
-        self.sampling_rate = sampling_rate
         self.transcript_buffer = HypothesisBuffer()
         self.commited = []
-
         self.buffer_trimming_sec = 30
 
     def insert_audio_chunk(self, audio):
         self.audio_buffer = np.append(self.audio_buffer, audio)
 
+    def to_flush(self, words: list[Word]):
+        return self.asr.sep.join(s.word for s in words)
+
     def prompt(self):
         """Returns a tuple: (prompt, context), where "prompt" is a 200-character suffix of commited text that is inside of the scrolled away part of audio buffer.
         "context" is the commited text that is inside the audio buffer. It is transcribed again and skipped. It is returned only for debugging and logging reasons.
         """
-        k = max(0, len(self.commited) - 1)
-        while k > 0 and self.commited[k - 1].end > self.buffer_time_offset:
-            k -= 1
-
-        p = self.commited[:k]
-        p = [t.word for t in p]
-        prompt = []
-        l = 0
-        while p and l < 1000:  # 200 characters prompt size
-            x = p.pop(-1)
-            l += len(x) + 1
-            prompt.append(x)
+        k = next((i for i in range(len(self.commited) - 1, -1, -1)
+                  if self.commited[i].end <= self.buffer_time_offset), 0)
+        prompt = self.commited[:k]
         non_prompt = self.commited[k:]
-        return self.asr.sep.join(prompt[::-1]), self.asr.sep.join(t.word for t in non_prompt)
+        l = 0
+        i = len(prompt)
+        sep_len = len(self.asr.sep)
+        while i > 0 and l < 1000:
+            l += len(prompt[i - 1].word) + sep_len
+            i -= 1
+        return (self.to_flush(i) for i in (prompt, non_prompt))
 
     def process_iter(self):
         """Runs on the current audio buffer.
@@ -83,7 +90,5 @@ class ASRProcessor:
         """
         o = self.transcript_buffer.complete()
         f = self.to_flush(o)
+        self.reset()
         return f
-
-    def to_flush(self, sents:list[Word]):
-        return self.asr.sep.join(s.word for s in sents)
