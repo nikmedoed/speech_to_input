@@ -27,7 +27,7 @@ class ASRProcessor:
         self.audio_buffer = np.append(self.audio_buffer, audio)
 
     def to_flush(self, words: list[Word]):
-        return self.asr.sep.join(s.word for s in words)
+        return self.asr.sep.join(s.word for s in words if s.word)
 
     def prompt(self):
         """Returns a tuple: (prompt, context), where "prompt" is a 200-character suffix of commited text that is inside of the scrolled away part of audio buffer.
@@ -52,6 +52,8 @@ class ASRProcessor:
         """
         prompt, non_prompt = self.prompt()
         iteration_words, iteration_ends = self.asr.transcribe(self.audio_buffer, init_prompt=prompt)
+        if not self.commited:
+            iteration_words[0].word= iteration_words[0].word.lstrip()
         self.transcript_buffer.insert(iteration_words, self.buffer_time_offset)
         o = self.transcript_buffer.flush()
         self.commited.extend(o)
