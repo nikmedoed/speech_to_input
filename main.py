@@ -42,18 +42,18 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
     stream.stop_stream()
 
     def handle_recording():
+        moment = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
         if not record_is_process.is_set():
             record_is_process.set()
             stream.start_stream()
-
             x, y = pynput.mouse.Controller().position
             indicator.show(x, y)
-
-            print("\nRecording started.")
+            time.time()
+            print(f"\n{moment} Recording started.")
         else:
             record_is_process.clear()
             stream.stop_stream()
-            print("\nRecording stopped.")
+            print(f"\n{moment} Recording stopped.")
 
     keyboard.add_hotkey('ctrl+alt+r', handle_recording)
 
@@ -71,7 +71,7 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
                 processor.insert_audio_chunk(data_list)
                 o = processor.process_iter()
                 if queue_audio_buffer.empty() and not record_is_process.is_set():
-                    pyperclip.copy(processor.gel_all_text())
+                    pyperclip.copy(processor.gel_all_text().lstrip())
                     o += processor.finish()
                     indicator.hide()
                 send_text(o)
@@ -90,9 +90,9 @@ if __name__ == "__main__":
     size = 'large-v3'
     SAMPLE_RATE = 16000
     selected_device = 1
+
     asr_cls = FasterWhisperASR
     indicator = RecordingIndicator()
-
     start_time = time.time()
 
     processor = ASRProcessor(asr_cls(modelsize=size, lan=language, vad=vad), SAMPLE_RATE)
