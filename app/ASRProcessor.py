@@ -84,6 +84,9 @@ class ASRProcessor:
         self.audio_buffer = self.audio_buffer[int(cut_seconds * self.sampling_rate):]
         self.buffer_time_offset = time
 
+    def gel_all_text(self):
+        return self.to_flush(self.commited + self.transcript_buffer.complete())
+
     def finish(self):
         """Flush the incomplete text when the whole processing ends.
         Returns: the same format as self.process_iter()

@@ -4,50 +4,29 @@ import threading
 import time
 import keyboard
 import queue
-import random
+
+from app.ASRP_debug_demo import ASRProcessorDemo
 from app.ASRProcessor import ASRProcessor
 from app.models.FasterWhisper import FasterWhisperASR
 from app.RecordingIndicator import RecordingIndicator
 import pynput
+import pyperclip
 
-
-class ASRProcessorDemo:
-    def __init__(self, asr, sampling_rate):
-        self.sampling_rate = sampling_rate
-        self.audio_buffer = np.array([], dtype=np.float32)
-        self.pause_time = 0
-        self.out = ""
-
-    def insert_audio_chunk(self, new_chunk):
-        lc = len(self.audio_buffer) / self.sampling_rate
-        self.audio_buffer = np.append(self.audio_buffer, new_chunk)
-        nl = len(self.audio_buffer) / self.sampling_rate
-        self.out = f"buff {nl:.2f} new {nl - lc:.2f} pause {self.pause_time}"
-        self.pause_time = random.randint(1, 5)
-        time.sleep(self.pause_time)
-
-    def finish(self):
-        tl = len(self.audio_buffer) / self.sampling_rate
-        self.audio_buffer = np.array([], dtype=np.float32)
-        return f"finished total: {tl :.2f}\n"
-
-    def process_iter(self):
-        out = self.out
-        self.out = "N/A"
-        return f"{out}\n"
-
-
-def send_text(text):
-    print(text or "", end="")
 
 def main(processor: ASRProcessor, sample_rate, selected_device, indicator: RecordingIndicator):
     queue_audio_buffer = queue.Queue()
     record_is_process = threading.Event()
 
+    keyboard_control = pynput.keyboard.Controller()
+
+    def send_text(text):
+        # print(text or "", end="")
+        keyboard_control.type(text)
+
     def audio_callback(in_data, frame_count, time_info, status):
         audio_data = np.frombuffer(in_data, dtype=np.int16).astype(np.float32) / 32768
         queue_audio_buffer.put(audio_data)
-        return (in_data, pyaudio.paContinue)
+        return in_data, pyaudio.paContinue
 
     p = pyaudio.PyAudio()
     stream = p.open(
@@ -92,6 +71,7 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
                 processor.insert_audio_chunk(data_list)
                 o = processor.process_iter()
                 if queue_audio_buffer.empty() and not record_is_process.is_set():
+                    pyperclip.copy(processor.gel_all_text())
                     o += processor.finish()
                     indicator.hide()
                 send_text(o)
@@ -115,12 +95,11 @@ if __name__ == "__main__":
 
     start_time = time.time()
 
-    # processor = ASRProcessor(asr_cls(modelsize=size, lan=language, vad=vad), SAMPLE_RATE)
-    processor = ASRProcessorDemo(None, SAMPLE_RATE)
+    processor = ASRProcessor(asr_cls(modelsize=size, lan=language, vad=vad), SAMPLE_RATE)
+    # processor = ASRProcessorDemo(None, SAMPLE_RATE)
 
     duration = time.time() - start_time
     print(f'model loaded {duration:.2f} sec')
-    # main(processor, SAMPLE_RATE, selected_device)
     processing_thread = threading.Thread(target=main, args=(processor, SAMPLE_RATE, selected_device, indicator))
     processing_thread.start()
 
