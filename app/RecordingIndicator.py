@@ -58,11 +58,11 @@ class RecordingIndicator:
             elapsed_time = datetime.now() - self.start_time
             mins, secs = divmod(elapsed_time.seconds, 60)
             self.canvas.itemconfig(self.timer_label, text=f"{mins:02}:{secs:02}")
-        else:
-            self.start_time = datetime.now()
-        self.root.after(1000, self.update_time)
+            self.root.after(1000, self.update_time)
 
     def show(self, x, y):
+        self.canvas.itemconfig(self.timer_label, text="00:00")
+        self.canvas.itemconfig(self.circle, fill=self.default_color)
         self.start_time = datetime.now()
         half = self.size // 2
         adjusted_x = x - half
@@ -79,8 +79,6 @@ class RecordingIndicator:
     def hide(self):
         self.root.withdraw()
         self.start_time = None
-        self.canvas.itemconfig(self.timer_label, text="00:00")
-        self.canvas.itemconfig(self.circle, fill=self.stop_color)
 
     def stop_recording(self):
         self.canvas.itemconfig(self.circle, fill=self.stop_color)
