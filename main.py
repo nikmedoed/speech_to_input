@@ -12,25 +12,32 @@ import pynput
 import pyperclip
 
 
-def paste(keyboard_control:pynput.keyboard.Controller):
-    ctrl = pynput.keyboard.Key.ctrl
-    keyboard_control.press(ctrl)
-    keyboard.send(47, do_press=True, do_release=True)
-    keyboard_control.release(ctrl)
+# def paste(keyboard_control:pynput.keyboard.Controller):
+#     ctrl = pynput.keyboard.Key.ctrl
+#     keyboard_control.press(ctrl)
+#     keyboard.send(47, do_press=True, do_release=True)
+#     keyboard_control.release(ctrl)
 
 
 def main(processor: ASRProcessor, sample_rate, selected_device, indicator: RecordingIndicator):
     queue_audio_buffer = queue.Queue()
     record_is_process = threading.Event()
 
-    keyboard_control = pynput.keyboard.Controller()
+    # keyboard_control = pynput.keyboard.Controller()
 
     def send_text(text):
         # print(text or "", end="")
-        # keyboard_control.type(text) # заменяет . и , на ю и б при русской раскладке
+
+        # keyboard_control.type(text)
+        # заменяет '.' и ',' на 'ю' и 'б' при русской раскладке
+        # Нужно добавлять свои обработки таких символов
+        # Вставка работает не везде, а лишнее нажатие ctrl нередко вызывает ошибки
 
         # pyperclip.copy(text)
-        # paste(keyboard_control) # либа keyboard при инициализации опирается на раскладку и если была русская, то v становится м, т.е. везде по 2 варианта надо обрабатывать
+        # paste(keyboard_control)
+        # либа keyboard при инициализации опирается на раскладку и если была русская,
+        # то 'v' становится 'м', т.е. везде по 2 варианта надо обрабатывать, либо слать кодами
+
 
         keyboard.write(text)
 
