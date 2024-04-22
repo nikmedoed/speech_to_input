@@ -12,11 +12,10 @@ import pynput
 import pyperclip
 
 
-def paste(keyboard_control):
+def paste(keyboard_control:pynput.keyboard.Controller):
     ctrl = pynput.keyboard.Key.ctrl
     keyboard_control.press(ctrl)
-    keyboard_control.press('v')
-    keyboard_control.release('v')
+    keyboard.send(47, do_press=True, do_release=True)
     keyboard_control.release(ctrl)
 
 
@@ -29,8 +28,11 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
     def send_text(text):
         # print(text or "", end="")
         # keyboard_control.type(text) # заменяет . и , на ю и б при русской раскладке
-        pyperclip.copy(text)
-        paste(keyboard_control)
+
+        # pyperclip.copy(text)
+        # paste(keyboard_control) # либа keyboard при инициализации опирается на раскладку и если была русская, то v становится м, т.е. везде по 2 варианта надо обрабатывать
+
+        keyboard.write(text)
 
     def audio_callback(in_data, frame_count, time_info, status):
         audio_data = np.frombuffer(in_data, dtype=np.int16).astype(np.float32) / 32768
@@ -66,7 +68,10 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
             print(f"\n{moment} Recording stopped.")
 
     keyboard.add_hotkey('ctrl+alt+r', handle_recording)
-    keyboard.add_hotkey('ctrl+`', handle_recording)
+    try:
+        keyboard.add_hotkey('ctrl+`', handle_recording)
+    except ValueError:
+        keyboard.add_hotkey('ctrl+ё', handle_recording)
 
     try:
         while True:
@@ -88,6 +93,7 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
                     indicator.hide()
                 send_text(o)
                 if all_text:
+                    time.sleep(0.3)
                     pyperclip.copy(all_text)
 
     except KeyboardInterrupt:
