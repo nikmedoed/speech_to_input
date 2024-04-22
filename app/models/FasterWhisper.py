@@ -13,6 +13,11 @@ class FasterWhisperASR:
         # warm up the ASR, because the very first transcribe takes much more time than the other
         self.transcribe(np.zeros(16000, dtype=np.float32))
 
+    STOP_SEGMENTS = {
+        'субтитры сделал dimatorzok',
+        'продолжение следует...',
+    }
+
     def transcribe(self, audio, init_prompt=""):
         segments, info = self.model.transcribe(audio,
                                                language=self.original_language,
@@ -25,6 +30,8 @@ class FasterWhisperASR:
         # return list(segments)
         words, ends = [], []
         for segment in segments:
+            if segment.text.lower() in self.STOP_SEGMENTS:
+                continue
             for word in segment.words:
                 words.append(Word(*word))
             ends.append(segment.end)
