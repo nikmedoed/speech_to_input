@@ -67,7 +67,7 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
 
     try:
         while True:
-            progressive_work = not settings.stop_immediately
+            progressive_work = record_is_process.is_set() or not settings.stop_immediately
             if queue_audio_buffer.empty():
                 if record_is_process.is_set():
                     time.sleep(3)
@@ -80,7 +80,7 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
                     data_list.append(queue_audio_buffer.get())
 
                 o = ""
-                if record_is_process.is_set() or progressive_work:
+                if progressive_work:
                     processor.insert_audio_chunk(data_list)
                     o = processor.process_iter()
 
@@ -113,7 +113,8 @@ if __name__ == "__main__":
 
     processor = ASRProcessor(asr_cls(modelsize=settigs.model_size,
                                      lan=settigs.model_language,
-                                     vad=settigs.model_vad))
+                                     vad=settigs.model_vad),
+                             settigs.sample_rate)
     # processor = ASRProcessorDemo(None, settigs.sample_rate)
 
     duration = time.time() - start_time
