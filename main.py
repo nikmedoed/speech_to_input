@@ -67,6 +67,7 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
 
     try:
         while True:
+            progressive_work = not settings.stop_immediately
             if queue_audio_buffer.empty():
                 if record_is_process.is_set():
                     time.sleep(3)
@@ -77,15 +78,20 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
                 data_list = []
                 while not queue_audio_buffer.empty():
                     data_list.append(queue_audio_buffer.get())
-                processor.insert_audio_chunk(data_list)
-                o = processor.process_iter()
+
+                o = ""
+                if record_is_process.is_set() or progressive_work:
+                    processor.insert_audio_chunk(data_list)
+                    o = processor.process_iter()
+
                 if queue_audio_buffer.empty() and not record_is_process.is_set():
                     all_text = processor.gel_all_text().lstrip()
                     o += processor.finish()
                     indicator.hide()
-                send_text(o)
-                if all_text:
+                if settings.typewrite and progressive_work:
+                    send_text(o)
                     time.sleep(0.3)
+                if all_text and settings.copy_to_buffer:
                     pyperclip.copy(all_text)
 
     except KeyboardInterrupt:
