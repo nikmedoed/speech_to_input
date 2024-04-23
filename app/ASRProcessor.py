@@ -53,7 +53,7 @@ class ASRProcessor:
         prompt, non_prompt = self.prompt()
         iteration_words, iteration_ends = self.asr.transcribe(self.audio_buffer, init_prompt=prompt)
         if not self.commited:
-            iteration_words[0].word= iteration_words[0].word.lstrip()
+            iteration_words[0].word = iteration_words[0].word.lstrip()
         self.transcript_buffer.insert(iteration_words, self.buffer_time_offset)
         o = self.transcript_buffer.flush()
         self.commited.extend(o)

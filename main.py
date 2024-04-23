@@ -4,40 +4,25 @@ import threading
 import time
 import keyboard
 import queue
-from app.ASRP_debug_demo import ASRProcessorDemo
 from app.ASRProcessor import ASRProcessor
 from app.models.FasterWhisper import FasterWhisperASR
 from app.RecordingIndicator import RecordingIndicator
 import pynput
 import pyperclip
 
-
-# def paste(keyboard_control:pynput.keyboard.Controller):
-#     ctrl = pynput.keyboard.Key.ctrl
-#     keyboard_control.press(ctrl)
-#     keyboard.send(47, do_press=True, do_release=True)
-#     keyboard_control.release(ctrl)
+from settings import Settings
 
 
-def main(processor: ASRProcessor, sample_rate, selected_device, indicator: RecordingIndicator):
+def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Settings):
     queue_audio_buffer = queue.Queue()
     record_is_process = threading.Event()
 
-    # keyboard_control = pynput.keyboard.Controller()
-
     def send_text(text):
         # print(text or "", end="")
-
-        # keyboard_control.type(text)
-        # заменяет '.' и ',' на 'ю' и 'б' при русской раскладке
-        # Нужно добавлять свои обработки таких символов
-        # Вставка работает не везде, а лишнее нажатие ctrl нередко вызывает ошибки
-
-        # pyperclip.copy(text)
-        # paste(keyboard_control)
-        # либа keyboard при инициализации опирается на раскладку и если была русская,
-        # то 'v' становится 'м', т.е. везде по 2 варианта надо обрабатывать, либо слать кодами
-
+        while keyboard.is_pressed('shift') or keyboard.is_pressed('ctrl') or keyboard.is_pressed('alt'):
+            time.sleep(0.1)
+            # ввод при попытке остановить вызывает проблемы, съедает пробелы,
+            # а то делает и похуже, т.к. нажимает горячие клавиши
 
         keyboard.write(text)
 
@@ -50,9 +35,9 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
     stream = p.open(
         format=pyaudio.paInt16,
         channels=1,
-        rate=sample_rate,
+        rate=settings.sample_rate,
         input=True,
-        input_device_index=selected_device,
+        input_device_index=settings.active_microphone_device,
         frames_per_buffer=1024,
         stream_callback=audio_callback
     )
@@ -114,22 +99,20 @@ def main(processor: ASRProcessor, sample_rate, selected_device, indicator: Recor
 
 
 if __name__ == "__main__":
-    language = 'ru'
-    vad = False
-    size = 'large-v3'
-    SAMPLE_RATE = 16000
-    selected_device = 1
+    settigs = Settings()
 
     asr_cls = FasterWhisperASR
     indicator = RecordingIndicator()
     start_time = time.time()
 
-    processor = ASRProcessor(asr_cls(modelsize=size, lan=language, vad=vad), SAMPLE_RATE)
-    # processor = ASRProcessorDemo(None, SAMPLE_RATE)
+    processor = ASRProcessor(asr_cls(modelsize=settigs.model_size,
+                                     lan=settigs.model_language,
+                                     vad=settigs.model_vad))
+    # processor = ASRProcessorDemo(None, settigs.sample_rate)
 
     duration = time.time() - start_time
     print(f'model loaded {duration:.2f} sec')
-    processing_thread = threading.Thread(target=main, args=(processor, SAMPLE_RATE, selected_device, indicator))
+    processing_thread = threading.Thread(target=main, args=(processor, indicator, settigs))
     processing_thread.start()
 
     try:
