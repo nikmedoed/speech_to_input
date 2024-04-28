@@ -11,6 +11,7 @@ import pynput
 import pyperclip
 
 from settings import Settings
+from app.AudioStreamManager import AudioStreamManager
 
 
 def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Settings):
@@ -23,26 +24,9 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
             time.sleep(0.1)
             # ввод при попытке остановить вызывает проблемы, съедает пробелы,
             # а то делает и похуже, т.к. нажимает горячие клавиши
-
         keyboard.write(text)
 
-    def audio_callback(in_data, frame_count, time_info, status):
-        audio_data = np.frombuffer(in_data, dtype=np.int16).astype(np.float32) / 32768
-        queue_audio_buffer.put(audio_data)
-        return in_data, pyaudio.paContinue
-
-    p = pyaudio.PyAudio()
-    stream = p.open(
-        format=pyaudio.paInt16,
-        channels=1,
-        rate=settings.sample_rate,
-        input=True,
-        input_device_index=settings.active_microphone_device,
-        frames_per_buffer=1024,
-        stream_callback=audio_callback
-    )
-
-    stream.stop_stream()
+    stream = AudioStreamManager(settings)
 
     def handle_recording():
         moment = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
@@ -51,7 +35,6 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
             stream.start_stream()
             x, y = pynput.mouse.Controller().position
             indicator.show(x, y)
-            time.time()
             print(f"\n{moment} Recording started.")
         else:
             record_is_process.clear()
@@ -65,43 +48,49 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
     except ValueError:
         keyboard.add_hotkey('ctrl+ё', handle_recording)
 
-    try:
-        while True:
-            progressive_work = record_is_process.is_set() or not settings.stop_immediately
-            if queue_audio_buffer.empty():
-                if record_is_process.is_set():
-                    time.sleep(3)
-                else:
-                    record_is_process.wait()
+    # try:
+    while True:
+        progressive_work = record_is_process.is_set() or not settings.stop_immediately
+        if queue_audio_buffer.empty():
+            if record_is_process.is_set():
+                time.sleep(3)
             else:
-                all_text = ""
-                data_list = []
-                while not queue_audio_buffer.empty():
-                    data_list.append(queue_audio_buffer.get())
+                record_is_process.wait()
+        else:
+            all_text = ""
+            data_list = stream.get_audio_data()
 
-                o = ""
-                if progressive_work:
-                    processor.insert_audio_chunk(data_list)
-                    o = processor.process_iter()
+            o = ""
+            if progressive_work:
+                processor.insert_audio_chunk(data_list)
+                o = processor.process_iter()
 
-                if queue_audio_buffer.empty() and not record_is_process.is_set():
-                    all_text = processor.gel_all_text().lstrip()
-                    o += processor.finish()
-                    indicator.hide()
-                if settings.typewrite and progressive_work:
-                    send_text(o)
-                    time.sleep(0.3)
-                if all_text and settings.copy_to_buffer:
-                    pyperclip.copy(all_text)
+            if queue_audio_buffer.empty() and not record_is_process.is_set():
+                all_text = processor.gel_all_text().lstrip()
+                all_text = processor.remove_stop_phrases(all_text)
+                o += processor.finish()
+                indicator.hide()
 
-    except KeyboardInterrupt:
-        pass
-    finally:
-        record_is_process.clear()
-        if stream is not None:
-            stream.stop_stream()
-            stream.close()
-        p.terminate()
+            # for phrase in processor.asr.STOP_PHRASES:
+            #     o = o.replace(phrase, '')
+            # o.replace('  ', ' ')
+
+            o = processor.remove_stop_phrases(o)
+
+            if settings.typewrite and progressive_work:
+                send_text(o)
+                time.sleep(0.3)
+            if all_text and settings.copy_to_buffer:
+                pyperclip.copy(all_text)
+
+    # except KeyboardInterrupt:
+    #     pass
+    # finally:
+    #     record_is_process.clear()
+    #     if stream is not None:
+    #         stream.stop_stream()
+    #         stream.close()
+    #     p.terminate()
 
 
 if __name__ == "__main__":

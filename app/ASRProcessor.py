@@ -2,6 +2,7 @@ import numpy as np
 
 from app.OutputBuffer import HypothesisBuffer
 from app.models.types import Word
+import re
 
 
 class ASRProcessor:
@@ -13,6 +14,8 @@ class ASRProcessor:
 
     def __init__(self, asr, sampling_rate):
         self.asr = asr
+        # stop_segments = '|'.join(map(re.escape, asr.STOP_PHRASES))
+        self.asr_stop_phrases_regex = r'\s*(' + '|'.join(map(re.escape, asr.STOP_PHRASES)) + r')\s*\.*'
         self.sampling_rate = sampling_rate
         self.reset()
 
@@ -26,8 +29,16 @@ class ASRProcessor:
     def insert_audio_chunk(self, audio):
         self.audio_buffer = np.append(self.audio_buffer, audio)
 
+    # Гипотеза, что нужно убирать стоп фразы только в to_flush
+    # Тогда не нужен отдельный метод, но если будет проскакивать, то выполнять надо в общем коде
+    # Также внимательно посмотреть что там с двойными пробелами
+    def remove_stop_phrases(self, text):
+        return re.sub(self.asr_stop_phrases_regex, '', text, flags=re.IGNORECASE)
+
     def to_flush(self, words: list[Word]):
-        return self.asr.sep.join(s.word for s in words if s.word)
+        text = self.asr.sep.join(s.word for s in words if s.word)
+        # return self.remove_stop_phrases(text)
+        return text
 
     def prompt(self):
         """Returns a tuple: (prompt, context), where "prompt" is a 200-character suffix of commited text that is inside of the scrolled away part of audio buffer.
