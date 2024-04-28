@@ -29,15 +29,11 @@ class ASRProcessor:
     def insert_audio_chunk(self, audio):
         self.audio_buffer = np.append(self.audio_buffer, audio)
 
-    # Гипотеза, что нужно убирать стоп фразы только в to_flush
-    # Тогда не нужен отдельный метод, но если будет проскакивать, то выполнять надо в общем коде
-    # Также внимательно посмотреть что там с двойными пробелами
     def remove_stop_phrases(self, text):
         return re.sub(self.asr_stop_phrases_regex, '', text, flags=re.IGNORECASE)
 
     def to_flush(self, words: list[Word]):
         text = self.asr.sep.join(s.word for s in words if s.word)
-        # return self.remove_stop_phrases(text)
         return text
 
     def prompt(self):

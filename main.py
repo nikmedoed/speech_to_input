@@ -1,45 +1,38 @@
-import pyaudio
-import numpy as np
 import threading
 import time
 import keyboard
-import queue
 from app.ASRProcessor import ASRProcessor
 from app.models.FasterWhisper import FasterWhisperASR
 from app.RecordingIndicator import RecordingIndicator
 import pynput
 import pyperclip
-
 from settings import Settings
 from app.AudioStreamManager import AudioStreamManager
 
 
+def send_text(text):
+    # print(text or "", end="")
+    while keyboard.is_pressed('shift') or keyboard.is_pressed('ctrl') or keyboard.is_pressed('alt'):
+        time.sleep(0.1)
+    keyboard.write(text)
+
+
 def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Settings):
-    queue_audio_buffer = queue.Queue()
     record_is_process = threading.Event()
-
-    def send_text(text):
-        # print(text or "", end="")
-        while keyboard.is_pressed('shift') or keyboard.is_pressed('ctrl') or keyboard.is_pressed('alt'):
-            time.sleep(0.1)
-            # ввод при попытке остановить вызывает проблемы, съедает пробелы,
-            # а то делает и похуже, т.к. нажимает горячие клавиши
-        keyboard.write(text)
-
     stream = AudioStreamManager(settings)
 
     def handle_recording():
         moment = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
         if not record_is_process.is_set():
-            record_is_process.set()
             stream.start_stream()
             x, y = pynput.mouse.Controller().position
             indicator.show(x, y)
+            record_is_process.set()
             print(f"\n{moment} Recording started.")
         else:
-            record_is_process.clear()
             stream.stop_stream()
             indicator.stop_recording()
+            record_is_process.clear()
             print(f"\n{moment} Recording stopped.")
 
     keyboard.add_hotkey('ctrl+alt+r', handle_recording)
@@ -51,7 +44,7 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
     # try:
     while True:
         progressive_work = record_is_process.is_set() or not settings.stop_immediately
-        if queue_audio_buffer.empty():
+        if stream.empty():
             if record_is_process.is_set():
                 time.sleep(3)
             else:
@@ -65,22 +58,17 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
                 processor.insert_audio_chunk(data_list)
                 o = processor.process_iter()
 
-            if queue_audio_buffer.empty() and not record_is_process.is_set():
+            if stream.empty() and not record_is_process.is_set():
                 all_text = processor.gel_all_text().lstrip()
-                all_text = processor.remove_stop_phrases(all_text)
                 o += processor.finish()
                 indicator.hide()
 
-            # for phrase in processor.asr.STOP_PHRASES:
-            #     o = o.replace(phrase, '')
-            # o.replace('  ', ' ')
-
-            o = processor.remove_stop_phrases(o)
-
             if settings.typewrite and progressive_work:
+                o = processor.remove_stop_phrases(o)
                 send_text(o)
                 time.sleep(0.3)
             if all_text and settings.copy_to_buffer:
+                all_text = processor.remove_stop_phrases(all_text)
                 pyperclip.copy(all_text)
 
     # except KeyboardInterrupt:
@@ -114,6 +102,7 @@ if __name__ == "__main__":
     try:
         indicator.root.mainloop()
     except KeyboardInterrupt:
+        print("interrupted")
         indicator.root.destroy()
     finally:
         processing_thread.join()

@@ -12,6 +12,7 @@ class AudioStreamManager:
         self.settings = settings
         self.queue_audio_buffer = queue.Queue()
         self.open_stream()
+        self.stop_stream()
 
     def audio_callback(self, in_data, frame_count, time_info, status):
         audio_data = np.frombuffer(in_data, dtype=np.int16).astype(np.float32) / 32768
@@ -33,7 +34,7 @@ class AudioStreamManager:
             rate=self.settings.sample_rate,
             input=True,
             input_device_index=self.settings.active_microphone_device,
-            frames_per_buffer=1024,
+            frames_per_buffer=4096,
             stream_callback=self.audio_callback
         )
 
@@ -44,13 +45,16 @@ class AudioStreamManager:
             self.open_stream()
 
     def stop_stream(self):
-        self.stop_stream()
+        self.stream.stop_stream()
 
     def get_audio_data(self):
         data_list = []
         while not self.queue_audio_buffer.empty():
             data_list.append(self.queue_audio_buffer.get())
         return data_list
+
+    def empty(self):
+        return self.queue_audio_buffer.empty()
 
     def __del__(self):
         self.close()
