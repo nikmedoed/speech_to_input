@@ -1,13 +1,16 @@
 import threading
 import time
+
 import keyboard
-from app.ASRProcessor import ASRProcessor
-from app.models.FasterWhisper import FasterWhisperASR
-from app.RecordingIndicator import RecordingIndicator
 import pynput
 import pyperclip
-from settings import Settings
+
+from app.ASRProcessor import ASRProcessor
 from app.AudioStreamManager import AudioStreamManager
+from app.RecordingIndicator import RecordingIndicator
+from app.models.FasterWhisper import FasterWhisperASR
+from app.select_device import select_input_devices
+from settings import Settings
 
 
 def send_text(text):
@@ -40,6 +43,7 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
         keyboard.add_hotkey('ctrl+`', handle_recording)
     except ValueError:
         keyboard.add_hotkey('ctrl+ё', handle_recording)
+    # DoubleKeyPress('alt', handle_recording)
 
     # try:
     while True:
@@ -82,27 +86,30 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
 
 
 if __name__ == "__main__":
-    settigs = Settings()
+    settings = Settings()
 
     asr_cls = FasterWhisperASR
     indicator = RecordingIndicator()
     start_time = time.time()
 
-    processor = ASRProcessor(asr_cls(modelsize=settigs.model_size,
-                                     lan=settigs.model_language,
-                                     vad=settigs.model_vad),
-                             settigs.sample_rate)
-    # processor = ASRProcessorDemo(None, settigs.sample_rate)
+    settings.active_microphone_device = select_input_devices() or 1
+
+    processor = ASRProcessor(asr_cls(modelsize=settings.model_size,
+                                     lan=settings.model_language,
+                                     vad=settings.model_vad),
+                             settings.sample_rate)
+    # processor = ASRProcessorDemo(None, settings.sample_rate)
 
     duration = time.time() - start_time
     print(f'model loaded {duration:.2f} sec')
-    processing_thread = threading.Thread(target=main, args=(processor, indicator, settigs))
+    processing_thread = threading.Thread(target=main, args=(processor, indicator, settings))
     processing_thread.start()
 
-    try:
-        indicator.root.mainloop()
-    except KeyboardInterrupt:
-        print("interrupted")
-        indicator.root.destroy()
-    finally:
-        processing_thread.join()
+    indicator.root.mainloop()
+    # try:
+    #     indicator.root.mainloop()
+    # except KeyboardInterrupt:
+    #     print("interrupted")
+    #     indicator.root.destroy()
+    # finally:
+    #     processing_thread.join()

@@ -7,8 +7,12 @@ class FasterWhisperASR:
 
     STOP_PHRASES = {
         'Субтитры сделал DimaTorzok',
-    'Субтитры создавал DimaTorzok',
+        'Субтитры создавал DimaTorzok',
         'Продолжение следует...',
+        'Редактор субтитров А.Семкин Корректор А.Егорова',
+        'Спасибо за внимание.',
+        'Продолжение',
+        'Продолжение серии.'
     }
 
     def __init__(self, lan=None, modelsize='large-v3', vad=True):
@@ -18,7 +22,6 @@ class FasterWhisperASR:
         self.model = WhisperModel(modelsize, device="cuda", compute_type="float16")
         # warm up the ASR, because the very first transcribe takes much more time than the other
         self.transcribe(np.zeros(16000, dtype=np.float32))
-
 
     def transcribe(self, audio, init_prompt=""):
         segments, info = self.model.transcribe(audio,
