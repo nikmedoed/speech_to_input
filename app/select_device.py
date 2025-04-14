@@ -16,7 +16,7 @@ def select_input_devices():
     p.terminate()
 
     for index, name in input_devices.items():
-        print(f"Index: {index}, Name: {name}")
+        print(f"{index:>2}: {name.replace('Microphone ', '')}")
 
     index = int(input("Enter index or none: ") or 0)
     return index

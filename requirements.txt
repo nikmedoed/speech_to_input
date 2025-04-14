@@ -1,8 +1,8 @@
-faster-whisper==1.0.1
-keyboard==0.13.5
-librosa==0.10.1
-numpy==1.24.3
-PyAudio==0.2.14
-pynput==1.7.6
-pyperclip==1.8.2
-sounddevice==0.4.6
+faster-whisper
+keyboard
+librosa
+numpy
+PyAudio
+pynput
+pyperclip
+sounddevice
