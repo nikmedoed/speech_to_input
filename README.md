@@ -135,5 +135,3 @@ def remove_stop_phrases(self, text):
     <td><a href="https://github.com/nikmedoed#-support-my-work"><img src="https://img.shields.io/badge/Other-more-lightgrey?logo=github" alt="Other" border="0"></a></td>
   </tr>
 </table>
-
----
