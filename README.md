@@ -123,15 +123,3 @@ def remove_stop_phrases(self, text):
 ### Остановка, сон, перезапуск
 - Была проблема, что поток микровофна останавливался после сна. Решил созданием отдельного класса для управления потоком с логикой перезапуска.
 - До сих пор не получилось сделать, чтобы нормально работал ctrl+C для остановки.
-
-## 💖 Support my work
-
-<table align="center" border="0" cellpadding="0" cellspacing="0">
-  <tr>
-    <td><a href="https://ko-fi.com/nikmedoed"><img src="https://img.shields.io/badge/Ko--fi-donate-FF5E5B?logo=kofi" alt="Ko-fi" border="0"></a></td>
-    <td><a href="https://boosty.to/nikmedoed/donate"><img src="https://img.shields.io/badge/Boosty-donate-FB400B?logo=boosty" alt="Boosty" border="0"></a></td>
-    <td><a href="https://paypal.me/etonikmedoed"><img src="https://img.shields.io/badge/PayPal-donate-00457C?logo=paypal" alt="PayPal" border="0"></a></td>
-    <td><a href="https://yoomoney.ru/to/4100119049495394"><img src="https://img.shields.io/badge/YooMoney-donate-8b3ffd?logo=yoomoney" alt="YooMoney" border="0"></a></td>
-    <td><a href="https://github.com/nikmedoed#-support-my-work"><img src="https://img.shields.io/badge/Other-more-lightgrey?logo=github" alt="Other" border="0"></a></td>
-  </tr>
-</table>
