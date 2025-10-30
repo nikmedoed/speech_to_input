@@ -12,6 +12,7 @@ from app.models.FasterWhisper import FasterWhisperASR
 from app.select_device import select_input_devices
 from settings import Settings
 
+from app.hotkeys import HotKeyListener
 
 def send_text(text):
     # print(text or "", end="")
@@ -38,12 +39,7 @@ def main(processor: ASRProcessor, indicator: RecordingIndicator, settings: Setti
             record_is_process.clear()
             print(f"\n{moment} Recording stopped.")
 
-    keyboard.add_hotkey('ctrl+alt+r', handle_recording)
-    try:
-        keyboard.add_hotkey('ctrl+`', handle_recording)
-    except ValueError:
-        keyboard.add_hotkey('ctrl+ё', handle_recording)
-    # DoubleKeyPress('alt', handle_recording)
+    HotKeyListener(handle_recording)
 
     # try:
     while True:
