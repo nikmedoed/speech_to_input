@@ -1,8 +1,19 @@
+from dataclasses import dataclass
+
 import numpy as np
 
 from app.OutputBuffer import HypothesisBuffer
 from app.models.types import Word
 import re
+from typing import List, Optional
+
+
+@dataclass
+class ASRChunk:
+    text: str
+    words: List[Word]
+    start: Optional[float]
+    end: Optional[float]
 
 
 class ASRProcessor:
@@ -53,12 +64,17 @@ class ASRProcessor:
         return (self.to_flush(i) for i in (prompt, non_prompt))
 
     def process_iter(self):
+        return self.process_iter_chunk().text
+
+    def process_iter_chunk(self) -> ASRChunk:
         """Runs on the current audio buffer.
         Returns: a tuple (beg_timestamp, end_timestamp, "text"), or (None, None, "").
         The non-emty text is confirmed (committed) partial transcript.
         """
         prompt, non_prompt = self.prompt()
         iteration_words, iteration_ends = self.asr.transcribe(self.audio_buffer, init_prompt=prompt)
+        if not iteration_words:
+            return ASRChunk(text="", words=[], start=None, end=None)
         if not self.commited:
             iteration_words[0].word = iteration_words[0].word.lstrip()
         self.transcript_buffer.insert(iteration_words, self.buffer_time_offset)
@@ -83,7 +99,14 @@ class ASRProcessor:
             #    k -= 1
             # t = self.commited[k].end
             # self.chunk_at(t)
-        return self.to_flush(o)
+        if not o:
+            return ASRChunk(text="", words=[], start=None, end=None)
+        return ASRChunk(
+            text=self.to_flush(o),
+            words=o,
+            start=o[0].start,
+            end=o[-1].end,
+        )
 
     def chunk_at(self, time):
         """trims the hypothesis and audio buffer at "time"

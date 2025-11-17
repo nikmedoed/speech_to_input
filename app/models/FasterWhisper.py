@@ -1,7 +1,19 @@
 from dataclasses import asdict
+import os
 
 import numpy as np
 from .types import Word
+
+# huggingface_hub's experimental Xet downloader fails on Windows/Dropbox setups
+# with "cannot create file, file exists (os error 183)". Force-disable it by
+# removing hf_xet support (hf_hub falls back to regular HTTP downloads).
+os.environ.setdefault("HF_HUB_ENABLE_XET", "0")
+try:
+    from huggingface_hub.utils import _runtime as _hf_runtime
+
+    _hf_runtime._package_versions["hf_xet"] = "N/A"
+except Exception:
+    pass
 
 
 class FasterWhisperASR:

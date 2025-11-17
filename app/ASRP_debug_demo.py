@@ -3,6 +3,8 @@ import time
 
 import numpy as np
 
+from app.ASRProcessor import ASRChunk
+
 
 class ASRProcessorDemo:
     def __init__(self, asr, sampling_rate):
@@ -28,6 +30,9 @@ class ASRProcessorDemo:
         return f"finished total: {tl :.2f}\n"
 
     def process_iter(self):
+        return self.process_iter_chunk().text
+
+    def process_iter_chunk(self):
         out = self.out
         self.out = "N/A"
-        return f"{out}\n"
+        return ASRChunk(text=f"{out}\n", words=[], start=None, end=None)

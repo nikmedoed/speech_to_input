@@ -6,3 +6,5 @@ PyAudio
 pynput
 pyperclip
 sounddevice
+soundcard
+webrtcvad
