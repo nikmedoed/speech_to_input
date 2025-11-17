@@ -23,11 +23,19 @@ class ASRProcessor:
     commited = []
     buffer_trimming_sec = 30
 
-    def __init__(self, asr, sampling_rate):
+    def __init__(
+        self,
+        asr,
+        sampling_rate,
+        buffer_context_sec: float = 6.0,
+        max_audio_buffer_sec: float = 12.0,
+    ):
         self.asr = asr
         # stop_segments = '|'.join(map(re.escape, asr.STOP_PHRASES))
         self.asr_stop_phrases_regex = r'\s*(' + '|'.join(map(re.escape, asr.STOP_PHRASES)) + r')\s*\.*'
         self.sampling_rate = sampling_rate
+        self.buffer_context_sec = max(0.0, buffer_context_sec)
+        self.max_audio_buffer_sec = max(self.buffer_context_sec + 1.0, max_audio_buffer_sec)
         self.reset()
 
     def reset(self):
@@ -35,9 +43,18 @@ class ASRProcessor:
         self.buffer_time_offset = 0
         self.transcript_buffer = HypothesisBuffer()
         self.commited = []
-        self.buffer_trimming_sec = 30
+        self.buffer_trimming_sec = self.max_audio_buffer_sec
 
     def insert_audio_chunk(self, audio):
+        if isinstance(audio, (list, tuple)):
+            chunks = [np.asarray(chunk, dtype=np.float32) for chunk in audio if chunk is not None]
+            if not chunks:
+                return
+            audio = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
+        else:
+            audio = np.asarray(audio, dtype=np.float32)
+        if audio.size == 0:
+            return
         self.audio_buffer = np.append(self.audio_buffer, audio)
 
     def remove_stop_phrases(self, text):
@@ -80,6 +97,7 @@ class ASRProcessor:
         self.transcript_buffer.insert(iteration_words, self.buffer_time_offset)
         o = self.transcript_buffer.flush()
         self.commited.extend(o)
+        self._trim_audio_buffer()
 
         if len(self.audio_buffer) / self.sampling_rate > self.buffer_trimming_sec:
             if not self.commited: return
@@ -127,3 +145,18 @@ class ASRProcessor:
         f = self.to_flush(o)
         self.reset()
         return f
+
+    def _trim_audio_buffer(self):
+        """Keep only the latest context window to avoid huge inference chunks."""
+        buffered_seconds = len(self.audio_buffer) / self.sampling_rate
+        if buffered_seconds <= self.max_audio_buffer_sec:
+            return
+        if not self.commited:
+            return
+        latest_end = self.commited[-1].end
+        if latest_end is None:
+            return
+        trim_before = latest_end - self.buffer_context_sec
+        trim_before = max(trim_before, self.buffer_time_offset)
+        if trim_before > self.buffer_time_offset:
+            self.chunk_at(trim_before)

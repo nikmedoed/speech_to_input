@@ -28,6 +28,8 @@ class MeetingTranscriberController:
         self.stream = stream
         self.ui = ui
         self.vad_filter = vad_filter
+        self._output_tail = ""
+        self._output_tail_limit = 400
 
         self._recording = threading.Event()
         self._shutdown = threading.Event()
@@ -60,6 +62,7 @@ class MeetingTranscriberController:
         self._recording.set()
         self.ui.set_running(True)
         self.ui.clear()
+        self._output_tail = ""
 
     def _stop_session(self):
         self._recording.clear()
@@ -107,6 +110,7 @@ class MeetingTranscriberController:
             if chunk and chunk.text.strip():
                 cleaned = settings.typewrite and chunk.text or chunk.text
                 cleaned = self.processor.remove_stop_phrases(cleaned).strip()
+                cleaned = self._extract_new_text(cleaned)
                 if cleaned:
                     ts = self._format_chunk(chunk)
                     self.ui.append_chunk(ts, cleaned)
@@ -118,6 +122,7 @@ class MeetingTranscriberController:
 
     def _emit_text(self, text: str, wall_time: float):
         cleaned = self.processor.remove_stop_phrases(text).strip()
+        cleaned = self._extract_new_text(cleaned)
         if cleaned:
             timestamp = self._format_timestamp(wall_time)
             self.ui.append_chunk(timestamp, cleaned)
@@ -139,6 +144,24 @@ class MeetingTranscriberController:
         mins, secs = divmod(int(seconds), 60)
         hours, mins = divmod(mins, 60)
         return f"{hours:02}:{mins:02}:{secs:02}"
+
+    def _extract_new_text(self, text: str) -> str:
+        """Strip any prefix that was already emitted earlier."""
+        if not text:
+            return ""
+        overlap = 0
+        tail = self._output_tail
+        max_overlap = min(len(tail), len(text))
+        for size in range(max_overlap, 0, -1):
+            if tail[-size:] == text[:size]:
+                overlap = size
+                break
+        new_part = text[overlap:]
+        if not new_part:
+            return ""
+        tail = (tail + new_part)[-self._output_tail_limit:]
+        self._output_tail = tail
+        return new_part
 
 
 def main():
